@@ -18,13 +18,13 @@ SCHEMA = {
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-def norm(s):
+def norm(s: str) -> str:
     """全角半角・空白・カンマを揃える。"""
     s = unicodedata.normalize("NFKC", s)
     return re.sub(r"[\s,]", "", s)
 
 
-def check_a(out):
+def check_a(out: dict) -> list[str]:
     errs = []
     for key, typ in SCHEMA.items():
         if key not in out:
@@ -37,12 +37,12 @@ def check_a(out):
     return errs
 
 
-def date_forms(d):
+def date_forms(d: str) -> list[str]:
     y, m, dd = (int(x) for x in d.split("-"))
     return [f"{y}年{m}月{dd}日", f"{y}/{m}/{dd}", f"{y}-{m:02d}-{dd:02d}"]
 
 
-def check_b(out, source):
+def check_b(out: dict, source: str) -> list[str]:
     errs = []
     src = norm(source)
     for key in ("event", "venue"):
@@ -62,7 +62,7 @@ def check_b(out, source):
     return errs
 
 
-def check_c(out):
+def check_c(out: dict) -> list[str]:
     errs = []
     y1, m1, d1 = (int(x) for x in out["start_date"].split("-"))
     y2, m2, d2 = (int(x) for x in out["end_date"].split("-"))
@@ -76,7 +76,7 @@ def check_c(out):
     return errs
 
 
-def run(cases):
+def run(cases: list[dict]) -> list[dict]:
     """各ケースが A/B/C のどれで弾かれたかを返す。"""
     rows = []
     for c in cases:
@@ -97,11 +97,16 @@ if __name__ == "__main__":
     with open(path, encoding="utf-8") as f:
         cases = json.load(f)
     rows = run(cases)
+
+    def mark(x: bool) -> str:
+        return "弾く" if x else "通す"
+
     for r in rows:
-        mark = lambda x: "弾く" if x else "通す"
-        print(f"{r['id']:<4}{r['kind']:<18}A:{mark(r['A'])} B:{mark(r['B'])} C:{mark(r['C'])}  {','.join(r['reasons'])}")
+        marks = f"A:{mark(r['A'])} B:{mark(r['B'])} C:{mark(r['C'])}"
+        print(f"{r['id']:<4}{r['kind']:<18}{marks}  {','.join(r['reasons'])}")
     bad = [r for r in rows if r["kind"] != "correct"]
     ok = [r for r in rows if r["kind"] == "correct"]
     print(f"\n誤り入りケース {len(bad)} 件 / 正常ケース {len(ok)} 件")
     for k in "ABC":
-        print(f"{k}: 誤りを弾いた {sum(r[k] for r in bad)}/{len(bad)}, 正常を誤って弾いた {sum(r[k] for r in ok)}/{len(ok)}")
+        caught, false_pos = sum(r[k] for r in bad), sum(r[k] for r in ok)
+        print(f"{k}: 誤りを弾いた {caught}/{len(bad)}, 正常を誤って弾いた {false_pos}/{len(ok)}")
